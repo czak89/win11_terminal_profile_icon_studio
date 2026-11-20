@@ -1,0 +1,1 @@
+# win11_terminal_profile_icon_studio
