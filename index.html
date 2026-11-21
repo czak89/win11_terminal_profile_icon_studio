@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Jednoplikowy kreator ikon profili i schematów kolorów dla Windows Terminal (Windows 11) z podglądem 1:1, edytorem pikseli, eksportem PNG/ICO/SVG/ZIP oraz importerem settings.json.">
+    <meta name="theme-color" content="#020617">
+    <link id="appFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0c0c'/%3E%3Cpath d='M0 7a7 7 0 0 1 7-7h18a7 7 0 0 1 7 7v4H0V7z' fill='%230078d4'/%3E%3Ccircle cx='25' cy='5.5' r='1.8' fill='%23ffffff' opacity='.85'/%3E%3Ctext x='16' y='24' text-anchor='middle' font-family='monospace' font-weight='700' font-size='13' fill='%23ffffff'%3E%3E_%3C/text%3E%3C/svg%3E">
     <title>Windows 11 Terminal Icon Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=JetBrains+Mono:wght@400;600;800&family=Roboto+Mono:wght@500;700&family=Silkscreen:wght@400;700&family=VT323&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -3365,10 +3368,33 @@
             }
         });
 
+        function isAnyModalOpen() {
+            return ['settingsJsonModal', 'zipPackModal', 'shortcutsModal'].some((id) => {
+                const el = document.getElementById(id);
+                return el && !el.classList.contains('hidden');
+            });
+        }
+
         // Globalne skróty klawiszowe (Undo/Redo, narzędzia, przesuwanie strzałkami, pomoc ?)
         window.addEventListener('keydown', (e) => {
             const tag = document.activeElement && document.activeElement.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+            const modalOpen = isAnyModalOpen();
+            if (e.key === '?') {
+                const shortcutsEl = document.getElementById('shortcutsModal');
+                if (shortcutsEl && !shortcutsEl.classList.contains('hidden')) {
+                    e.preventDefault();
+                    closeModal('shortcutsModal');
+                    return;
+                }
+                if (!modalOpen) {
+                    e.preventDefault();
+                    openShortcutsModal();
+                }
+                return;
+            }
+            if (modalOpen) return;
 
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
@@ -3384,10 +3410,7 @@
             if (e.ctrlKey || e.metaKey || e.altKey) return;
 
             const k = e.key.toLowerCase();
-            if (e.key === '?') {
-                e.preventDefault();
-                openShortcutsModal();
-            } else if (k === 'v' || k === 'm') {
+            if (k === 'v' || k === 'm') {
                 setPixelTool('move');
             } else if (k === 'b' || k === 'p') {
                 setPixelTool('pencil');
@@ -4112,6 +4135,33 @@
                     renderWtSchemePreview();
                 }
             }
+            scheduleFaviconUpdate();
+        }
+
+        let faviconUpdateTimer = null;
+        const faviconCanvas = document.createElement('canvas');
+        faviconCanvas.width = 32;
+        faviconCanvas.height = 32;
+        function updateDynamicFavicon() {
+            try {
+                const link = document.getElementById('appFavicon');
+                if (!link) return;
+                renderIconToCanvas(faviconCanvas, 32);
+                const dataUrl = faviconCanvas.toDataURL('image/png');
+                if (dataUrl && dataUrl.startsWith('data:image/png')) {
+                    link.type = 'image/png';
+                    link.href = dataUrl;
+                }
+            } catch (_) {
+                // Zachowaj domyślny favicon SVG, jeśli płótno jest oznaczone jako tainted
+            }
+        }
+        function scheduleFaviconUpdate() {
+            if (faviconUpdateTimer) clearTimeout(faviconUpdateTimer);
+            faviconUpdateTimer = setTimeout(() => {
+                faviconUpdateTimer = null;
+                updateDynamicFavicon();
+            }, 120);
         }
 
         // Synchronizatory kolorów
